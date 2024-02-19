@@ -132,6 +132,9 @@
     <version.black.ninia>4.2.0</version.black.ninia>
     <version.com.google.guava>32.0.0-jre</version.com.google.guava>
     <version.apache.commons.commons-compress>1.24.0</version.apache.commons.commons-compress>
+    <version.yaml.mapper.common>0.4</version.yaml.mapper.common>
+    <version.yaml.mapper>0.4</version.yaml.mapper>
+    <version.jshell>1.1.0</version.jshell>
   </properties>
 
   <dependencyManagement>
@@ -805,6 +808,21 @@
         <groupId>black.ninia</groupId>
         <artifactId>jep</artifactId>
         <version>${version.black.ninia}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.treblereel.gwt.yaml.mapper</groupId>
+        <artifactId>common</artifactId>
+        <version>${version.yaml.mapper}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.treblereel.gwt.yaml.mapper</groupId>
+        <artifactId>processor</artifactId>
+        <version>${version.yaml.mapper}</version>
+      </dependency>
+      <dependency>
+        <groupId>ch.obermuhlner</groupId>
+        <artifactId>jshell-scriptengine</artifactId>
+        <version>${version.jshell}</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
