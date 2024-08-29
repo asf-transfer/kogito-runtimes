@@ -98,6 +98,20 @@ public class ProcessServiceImpl implements ProcessService {
     }
 
     @Override
+    public <T extends Model> ProcessInstance<T> createProcessInstanceBySignal(Process<T> process, String businessKey,
+            T model,
+            Map<String, List<String>> headers,
+            String trigger,
+            String kogitoReferenceId,
+            CompositeCorrelation correlation) {
+        return UnitOfWorkExecutor.executeInUnitOfWork(application.unitOfWorkManager(), () -> {
+            ProcessInstance<T> pi = process.createInstance(businessKey, correlation, model);
+            pi.trigger(trigger, kogitoReferenceId, model);
+            return pi;
+        });
+    }
+
+    @Override
     public <T extends MappableToModel<R>, R> List<R> getProcessInstanceOutput(Process<T> process) {
         try (Stream<ProcessInstance<T>> stream = process.instances().stream().limit(processInstanceLimit)) {
             return stream.map(ProcessInstance::variables)

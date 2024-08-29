@@ -22,8 +22,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.jbpm.process.core.context.exception.CompensationScope;
@@ -31,7 +29,6 @@ import org.jbpm.process.core.context.exception.ExceptionScope;
 import org.jbpm.process.core.context.swimlane.SwimlaneContext;
 import org.jbpm.process.core.context.variable.VariableScope;
 import org.jbpm.process.core.event.EventFilter;
-import org.jbpm.process.core.validation.impl.ProcessValidationErrorImpl;
 import org.jbpm.workflow.core.impl.NodeContainerImpl;
 import org.jbpm.workflow.core.impl.WorkflowProcessImpl;
 import org.jbpm.workflow.core.node.ConstraintTrigger;
@@ -42,7 +39,6 @@ import org.jbpm.workflow.core.node.StartNode;
 import org.jbpm.workflow.core.node.Trigger;
 import org.kie.api.definition.process.Node;
 import org.kie.api.definition.process.NodeContainer;
-import org.kie.kogito.process.validation.ValidationException;
 
 public class RuleFlowProcess extends WorkflowProcessImpl {
 
@@ -115,55 +111,35 @@ public class RuleFlowProcess extends WorkflowProcessImpl {
         return endNodes;
     }
 
-    public StartNode getStart(String trigger, Function<String, Object> varResolver) {
+    public StartNode getStart(String trigger, Object payload) {
         Node[] nodes = getNodes();
 
         for (int i = 0; i < nodes.length; i++) {
-            if (nodes[i] instanceof StartNode) {
-
-                StartNode start = ((StartNode) nodes[i]);
-
-                // return start node that is not event based node
-                if (trigger == null && ((start.getTriggers() == null
-                        || start.getTriggers().isEmpty())
-                        && start.getTimer() == null)) {
+            if (nodes[i] instanceof StartNode start) {
+                // no events
+                if (trigger == null && ((start.getTriggers() == null || start.getTriggers().isEmpty()) && start.getTimer() == null)) {
                     return start;
-                } else {
-                    if (start.getTriggers() != null) {
-                        for (Trigger t : start.getTriggers()) {
-                            if (t instanceof EventTrigger) {
-                                EventTrigger eventTrigger = (EventTrigger) t;
-                                Map<String, String> mappings = eventTrigger.getInMappings();
-                                Object event = null;
-                                if (varResolver != null) {
-                                    switch (mappings.size()) {
-                                        case 0:
-                                            event = null;
-                                            break;
-                                        case 1:
-                                            event = varResolver.apply(mappings.values().iterator().next());
-                                            break;
-                                        default:
-                                            event = varResolver.apply("event");
-                                            break;
-                                    }
-                                }
+                }
 
-                                for (EventFilter filter : eventTrigger.getEventFilters()) {
-                                    if (filter.acceptsEvent(trigger, event, varResolver)) {
-                                        return start;
-                                    }
+                // there is a timer
+                if (start.getTimer() != null && "timer".equals(trigger)) {
+                    return start;
+                }
+
+                // there is an event trigger
+                if (start.getTriggers() != null) {
+                    for (Trigger t : start.getTriggers()) {
+                        if (t instanceof EventTrigger eventTrigger) {
+                            for (EventFilter filter : eventTrigger.getEventFilters()) {
+                                if (filter.acceptsEvent(trigger, payload, key -> null)) {
+                                    return start;
                                 }
-                            } else if (t instanceof ConstraintTrigger && "conditional".equals(trigger)) {
-                                return start;
                             }
-                        }
-                    } else if (start.getTimer() != null) {
-
-                        if ("timer".equals(trigger)) {
+                        } else if (t instanceof ConstraintTrigger && "conditional".equals(trigger)) {
                             return start;
                         }
                     }
+
                 }
             }
         }
@@ -183,18 +159,6 @@ public class RuleFlowProcess extends WorkflowProcessImpl {
     private class WorkflowProcessNodeContainer extends NodeContainerImpl {
 
         private static final long serialVersionUID = 510l;
-
-        @Override
-        protected void validateAddNode(Node node) {
-            super.validateAddNode(node);
-            StartNode startNode = getStart(null, null);
-            if ((node instanceof StartNode) && (startNode != null && startNode.getTriggers() == null && startNode.getTimer() == null)) {
-                // ignore start nodes that are event based
-                if ((((StartNode) node).getTriggers() == null || ((StartNode) node).getTriggers().isEmpty()) && ((StartNode) node).getTimer() == null) {
-                    throw new ValidationException(getId(), new ProcessValidationErrorImpl(RuleFlowProcess.this, "A process cannot have more than one start node!"));
-                }
-            }
-        }
 
     }
 

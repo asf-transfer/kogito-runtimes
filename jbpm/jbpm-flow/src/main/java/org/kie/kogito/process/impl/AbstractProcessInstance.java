@@ -72,8 +72,12 @@ import org.kie.kogito.process.flexible.Milestone;
 import org.kie.kogito.process.workitem.Policy;
 import org.kie.kogito.process.workitem.Transition;
 import org.kie.kogito.services.uow.ProcessInstanceWorkUnit;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public abstract class AbstractProcessInstance<T extends Model> implements ProcessInstance<T> {
+
+    private static final Logger logger = LoggerFactory.getLogger(AbstractProcessInstance.class);
 
     private static final String KOGITO_PROCESS_INSTANCE = "KogitoProcessInstance";
 
@@ -154,7 +158,7 @@ public abstract class AbstractProcessInstance<T extends Model> implements Proces
         this.removed = new AtomicBoolean(false);
     }
 
-    protected void reconnect() {
+    public void reconnect() {
         //set correlation
         if (correlationInstance.isEmpty()) {
             correlationInstance = process().correlations().findByCorrelatedId(id());
@@ -266,6 +270,28 @@ public abstract class AbstractProcessInstance<T extends Model> implements Proces
     }
 
     @Override
+    public void trigger(String trigger, String referenceId, Object payload) {
+        if (this.status != KogitoProcessInstance.STATE_PENDING) {
+            throw new IllegalStateException("Impossible to start process instance that already has started");
+        }
+        this.status = KogitoProcessInstance.STATE_ACTIVE;
+
+        getProcessRuntime().getProcessInstanceManager().setLock(((MutableProcessInstances<T>) process.instances()).lock());
+        getProcessRuntime().getProcessInstanceManager().addProcessInstance(this.processInstance);
+        this.id = processInstance.getStringId();
+        addCompletionEventListener();
+        addToUnitOfWork(pi -> ((MutableProcessInstances<T>) process.instances()).create(id, this));
+        KogitoProcessInstance kogitoProcessInstance = getProcessRuntime().getKogitoProcessRuntime().triggerProcessInstance(this.id, trigger, payload, null);
+        if (kogitoProcessInstance.getState() != STATE_ABORTED && kogitoProcessInstance.getState() != STATE_COMPLETED) {
+            addToUnitOfWork(pi -> ((MutableProcessInstances<T>) process.instances()).update(pi.id(), pi));
+        }
+        unbind(variables, kogitoProcessInstance.getVariables());
+        if (this.processInstance != null) {
+            this.status = this.processInstance.getState();
+        }
+    }
+
+    @Override
     public void start(String trigger, String referenceId, Map<String, List<String>> headers) {
         if (this.status != KogitoProcessInstance.STATE_PENDING) {
             throw new IllegalStateException("Impossible to start process instance that already has started");
@@ -320,6 +346,7 @@ public abstract class AbstractProcessInstance<T extends Model> implements Proces
         if (signal.referenceId() != null) {
             processInstance().setReferenceId(signal.referenceId());
         }
+        logger.debug("Send signal to {} with trigger {} and payload {}", id(), signal.channel(), signal.payload());
         processInstance().signalEvent(signal.channel(), signal.payload());
         removeOnFinish();
     }
@@ -579,7 +606,7 @@ public abstract class AbstractProcessInstance<T extends Model> implements Proces
         return processInstance.adHocFragments();
     }
 
-    protected void removeOnFinish() {
+    public void removeOnFinish() {
         if (processInstance.getState() != KogitoProcessInstance.STATE_ACTIVE && processInstance.getState() != KogitoProcessInstance.STATE_ERROR) {
             removeCompletionListener();
             syncProcessInstance(processInstance);

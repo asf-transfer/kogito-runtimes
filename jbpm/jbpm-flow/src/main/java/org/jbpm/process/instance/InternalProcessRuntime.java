@@ -18,11 +18,14 @@
  */
 package org.jbpm.process.instance;
 
+import java.util.Map;
+
 import org.drools.core.common.InternalKnowledgeRuntime;
 import org.drools.core.common.InternalWorkingMemory;
 import org.kie.api.runtime.process.ProcessRuntime;
 import org.kie.kogito.Application;
 import org.kie.kogito.internal.process.event.KogitoProcessEventSupport;
+import org.kie.kogito.internal.process.runtime.KogitoProcessInstance;
 import org.kie.kogito.internal.process.runtime.KogitoProcessRuntime;
 import org.kie.kogito.jobs.JobsService;
 import org.kie.kogito.signal.SignalManager;
@@ -54,4 +57,6 @@ public interface InternalProcessRuntime extends org.drools.core.runtime.process.
         // this line is used only for legacy tests
         return ((KogitoProcessRuntime.Provider) ((InternalWorkingMemory) kogitoProcessRuntimeProvider).getProcessRuntime()).getKogitoProcessRuntime();
     }
+
+    KogitoProcessInstance startProcess(String processId, String trigger, Map<String, Object> parameters);
 }

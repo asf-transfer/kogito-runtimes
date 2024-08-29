@@ -52,6 +52,31 @@ public interface KogitoProcessRuntime {
      * as variables of the process instance.
      *
      * @param processId the id of the process that should be started
+     * @param trigger
+     * @param parameters the process variables that should be set when starting the process instance
+     * @return the <code>ProcessInstance</code> that represents the instance of the process that was started
+     */
+    KogitoProcessInstance triggerProcessInstance(String processInstanceId, String trigger, Object payload, AgendaFilter agendaFilter);
+
+    /**
+     * Start a new process instance. The process (definition) that should
+     * be used is referenced by the given process id. Parameters can be passed
+     * to the process instance (as name-value pairs), and these will be set
+     * as variables of the process instance.
+     *
+     * @param processId the id of the process that should be started
+     * @param parameters the process variables that should be set when starting the process instance
+     * @return the <code>ProcessInstance</code> that represents the instance of the process that was started
+     */
+    KogitoProcessInstance startProcess(String processId, String trigger, Map<String, Object> parameters);
+
+    /**
+     * Start a new process instance. The process (definition) that should
+     * be used is referenced by the given process id. Parameters can be passed
+     * to the process instance (as name-value pairs), and these will be set
+     * as variables of the process instance.
+     *
+     * @param processId the id of the process that should be started
      * @param parameters the process variables that should be set when starting the process instance
      * @return the <code>ProcessInstance</code> that represents the instance of the process that was started
      */
@@ -218,4 +243,5 @@ public interface KogitoProcessRuntime {
 
     @Deprecated
     KieSession getKieSession();
+
 }

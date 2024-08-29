@@ -168,4 +168,9 @@ public interface ProcessService {
             String taskId,
             String taskName,
             SecurityPolicy policy);
+
+    <T extends Model> ProcessInstance<T> createProcessInstanceBySignal(
+            Process<T> process, String businessKey, T model, Map<String, List<String>> headers, String trigger, String kogitoReferenceId,
+            CompositeCorrelation correlation);
+
 }

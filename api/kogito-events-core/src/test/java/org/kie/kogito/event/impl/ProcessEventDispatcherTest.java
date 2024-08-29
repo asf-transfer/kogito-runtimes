@@ -18,9 +18,7 @@
  */
 package org.kie.kogito.event.impl;
 
-import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -43,13 +41,13 @@ import org.kie.kogito.process.Process;
 import org.kie.kogito.process.ProcessInstance;
 import org.kie.kogito.process.ProcessInstances;
 import org.kie.kogito.process.ProcessService;
+import org.kie.kogito.process.Signal;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
@@ -80,6 +78,7 @@ class ProcessEventDispatcherTest {
         when(processInstances.findById("1")).thenReturn(Optional.of(processInstance));
         processService = mock(ProcessService.class);
         when(processService.createProcessInstance(eq(process), any(), any(), any(), any(), any(), any(), any())).thenReturn(processInstance);
+        when(processService.createProcessInstanceBySignal(eq(process), any(), any(), any(), any(), any(), any())).thenReturn(processInstance);
         when(processService.signalProcessInstance(eq(process), any(), any(), any())).thenReturn(Optional.of(mock(DummyModel.class)));
         executor = Executors.newSingleThreadExecutor();
     }
@@ -96,17 +95,16 @@ class ProcessEventDispatcherTest {
 
     @Test
     void testSigCloudEvent() throws Exception {
-        EventDispatcher<DummyModel, TestEvent> dispatcher = new ProcessEventDispatcher<>(process, Optional.empty(), processService, executor, null, o -> o.getData());
+        Set<String> correlations = Set.of("1");
+        EventDispatcher<DummyModel, TestEvent> dispatcher = new ProcessEventDispatcher<>(process, Optional.empty(), processService, executor, correlations, o -> o.getData());
         ProcessInstance<DummyModel> instance = dispatcher.dispatch(DUMMY_TOPIC, new TestCloudEvent<>(new TestEvent("pepe"), DUMMY_TOPIC, "source", "1")).toCompletableFuture().get();
 
-        ArgumentCaptor<String> signal = ArgumentCaptor.forClass(String.class);
-        ArgumentCaptor<String> processInstanceId = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<Signal> signal = ArgumentCaptor.forClass(Signal.class);
 
-        verify(processService, times(1)).signalProcessInstance(Mockito.any(Process.class), processInstanceId.capture(), Mockito.any(Object.class), signal.capture());
+        verify(process, times(2)).send(signal.capture());
 
-        assertThat(signal.getValue()).isEqualTo("Message-" + DUMMY_TOPIC);
-        assertThat(processInstanceId.getValue()).isEqualTo("1");
-        assertThat(processInstance).isEqualTo(instance);
+        List<Signal> signals = signal.getAllValues();
+        assertThat(signals).extracting(Signal::channel).contains(DUMMY_TOPIC, "Message-" + DUMMY_TOPIC);
     }
 
     @Test
@@ -114,16 +112,15 @@ class ProcessEventDispatcherTest {
         EventDispatcher<DummyModel, TestEvent> dispatcher = new ProcessEventDispatcher<>(process, modelConverter(), processService, executor, null, o -> o.getData());
         ProcessInstance<DummyModel> instance = dispatcher.dispatch(DUMMY_TOPIC, new TestCloudEvent<>(new TestEvent("pepe"), DUMMY_TOPIC)).toCompletableFuture().get();
 
-        ArgumentCaptor<String> signal = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<Signal> signal = ArgumentCaptor.forClass(Signal.class);
         ArgumentCaptor<String> referenceId = ArgumentCaptor.forClass(String.class);
 
         verify(processInstances, never()).findById(any());
-        verify(processService, never()).signalProcessInstance(eq(process), any(), any(), signal.capture());
-        verify(processService, times(1)).createProcessInstance(eq(process), any(), any(DummyModel.class), any(), any(), signal.capture(), referenceId.capture(), isNull());
+        verify(processService, never()).signalProcessInstance(eq(process), any(), any(), any());
+        verify(process, times(2)).send(signal.capture());
+        List<Signal> signals = signal.getAllValues();
+        assertThat(signals).extracting(Signal::channel).contains(DUMMY_TOPIC, "Message-" + DUMMY_TOPIC);
 
-        assertThat(signal.getValue()).isEqualTo(DUMMY_TOPIC);
-        assertThat(referenceId.getValue()).isEqualTo("1");
-        assertThat(processInstance).isEqualTo(instance);
     }
 
     @Test
@@ -131,18 +128,10 @@ class ProcessEventDispatcherTest {
         EventDispatcher<DummyModel, TestEvent> dispatcher = new ProcessEventDispatcher<>(process, modelConverter(), processService, executor, null, o -> o.getData());
         ProcessInstance<DummyModel> instance = dispatcher.dispatch(DUMMY_TOPIC, new TestCloudEvent<>(new TestEvent("pepe"), DUMMY_TOPIC, "source", "invalidReference")).toCompletableFuture().get();
 
-        ArgumentCaptor<String> signal = ArgumentCaptor.forClass(String.class);
-        ArgumentCaptor<String> referenceId = ArgumentCaptor.forClass(String.class);
-        ArgumentCaptor<Map<String, List<String>>> headers = ArgumentCaptor.forClass(Map.class);
+        ArgumentCaptor<Signal> signal = ArgumentCaptor.forClass(Signal.class);
+        verify(process, times(2)).send(signal.capture());
 
-        verify(processInstances, times(1)).findById("invalidReference");
-        verify(processService, never()).signalProcessInstance(eq(process), any(), any(), signal.capture());
-        verify(processService, times(1)).createProcessInstance(eq(process), any(), any(DummyModel.class), headers.capture(), any(), signal.capture(), referenceId.capture(), isNull());
-
-        assertThat(signal.getValue()).isEqualTo(DUMMY_TOPIC);
-        assertThat(referenceId.getValue()).isEqualTo("1");
-        assertThat(headers.getValue()).containsEntry("source", Arrays.asList("source"));
-        assertThat(processInstance).isEqualTo(instance);
+        assertThat(signal.getValue().channel()).isEqualTo("Message-" + DUMMY_TOPIC);
     }
 
     @Test
@@ -150,10 +139,10 @@ class ProcessEventDispatcherTest {
         EventDispatcher<DummyModel, TestEvent> dispatcher = new ProcessEventDispatcher<>(process, modelConverter(), processService, executor, null, o -> o.getData());
         ProcessInstance<DummyModel> instance = dispatcher.dispatch(DUMMY_TOPIC, DataEventFactory.from(new TestEvent("pepe"))).toCompletableFuture().get();
 
-        ArgumentCaptor<String> signal = ArgumentCaptor.forClass(String.class);
-        verify(processService, times(1)).createProcessInstance(eq(process), any(), any(DummyModel.class), any(), any(), signal.capture(), isNull(), isNull());
-        assertThat(signal.getValue()).isEqualTo(DUMMY_TOPIC);
-        assertThat(processInstance).isEqualTo(instance);
+        ArgumentCaptor<Signal> signal = ArgumentCaptor.forClass(Signal.class);
+        verify(process, times(2)).send(signal.capture());
+        assertThat(signal.getValue().channel()).isEqualTo("Message-" + DUMMY_TOPIC);
+        assertThat(instance).isNull();
     }
 
     @Test
@@ -167,18 +156,14 @@ class ProcessEventDispatcherTest {
     @Test
     void testStringSigCloudEvent() throws Exception {
         EventDispatcher<DummyModel, String> dispatcher = new ProcessEventDispatcher<>(process, Optional.empty(), processService, executor, null, o -> o.getData());
-        ProcessInstance<DummyModel> instance = dispatcher.dispatch(DUMMY_TOPIC, new TestCloudEvent<>("pepe", DUMMY_TOPIC, "source", "1")).toCompletableFuture().get();
+        dispatcher.dispatch(DUMMY_TOPIC, new TestCloudEvent<>("pepe", DUMMY_TOPIC, "source", "1")).toCompletableFuture().get();
 
-        ArgumentCaptor<String> signal = ArgumentCaptor.forClass(String.class);
-        ArgumentCaptor<String> processInstanceId = ArgumentCaptor.forClass(String.class);
-        ArgumentCaptor<Object> signalObject = ArgumentCaptor.forClass(Object.class);
+        ArgumentCaptor<Signal> signal = ArgumentCaptor.forClass(Signal.class);
 
-        verify(processService, times(1)).signalProcessInstance(Mockito.any(Process.class), processInstanceId.capture(), signalObject.capture(), signal.capture());
+        verify(process, times(2)).send(signal.capture());
 
-        assertThat(signal.getValue()).isEqualTo("Message-" + DUMMY_TOPIC);
-        assertThat(signalObject.getValue()).isEqualTo("pepe");
-        assertThat(processInstanceId.getValue()).isEqualTo("1");
-        assertThat(processInstance).isEqualTo(instance);
+        assertThat(signal.getValue().channel()).isEqualTo("Message-" + DUMMY_TOPIC);
+        assertThat(signal.getValue().payload()).isEqualTo("pepe");
     }
 
     @Test
@@ -204,15 +189,14 @@ class ProcessEventDispatcherTest {
 
         ProcessInstance<DummyModel> instance = dispatcher.dispatch(DUMMY_TOPIC, event).toCompletableFuture().get();
 
-        ArgumentCaptor<String> signal = ArgumentCaptor.forClass(String.class);
-        ArgumentCaptor<String> referenceId = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<Signal> signal = ArgumentCaptor.forClass(Signal.class);
         ArgumentCaptor<CompositeCorrelation> correlationCaptor = ArgumentCaptor.forClass(CompositeCorrelation.class);
 
-        verify(processService, times(1)).createProcessInstance(eq(process), any(), any(DummyModel.class), any(), any(), signal.capture(), referenceId.capture(), correlationCaptor.capture());
+        verify(process, times(2)).send(signal.capture());
+        verify(correlationService).find(correlationCaptor.capture());
 
-        assertThat(signal.getValue()).isEqualTo(DUMMY_TOPIC);
-        assertThat(referenceId.getValue()).isEqualTo("1");
-        assertThat(processInstance).isEqualTo(instance);
+        List<Signal> signals = signal.getAllValues();
+        assertThat(signals).extracting(Signal::channel).contains(DUMMY_TOPIC, "Message-" + DUMMY_TOPIC);
 
         CompositeCorrelation correlation = correlationCaptor.getValue();
         Set<? extends Correlation<?>> correlations = correlation.getValue();

@@ -49,7 +49,7 @@
     </bpmn2:scriptTask>
     <bpmn2:endEvent id="_B0BFC968-31E3-4098-A16A-91E4AD630B9B">
       <bpmn2:incoming>_184FC675-3749-4587-B86A-5CE2EBF813D5</bpmn2:incoming>
-      <bpmn2:dataInput id="_B0BFC968-31E3-4098-A16A-91E4AD630B9B_eventInputX" drools:dtype="String" itemSubjectRef="__B0BFC968-31E3-4098-A16A-91E4AD630B9B_eventInputXItem" name="event"/>
+      <bpmn2:dataInput id="_B0BFC968-31E3-4098-A16A-91E4AD630B9B_eventInputX" drools:dtype="String" itemSubjectRef="__B0BFC968-31E3-4098-A16A-91E4AD630B9B_eventInputXItem" name="message"/>
       <bpmn2:dataInputAssociation>
         <bpmn2:sourceRef>message</bpmn2:sourceRef>
         <bpmn2:targetRef>_B0BFC968-31E3-4098-A16A-91E4AD630B9B_eventInputX</bpmn2:targetRef>
@@ -61,7 +61,7 @@
     </bpmn2:endEvent>
     <bpmn2:startEvent id="_D141F6FF-07C3-4F3C-9112-D16EBC10929C">
       <bpmn2:outgoing>_067B915E-E9C2-47DC-BE71-49F59822971A</bpmn2:outgoing>
-      <bpmn2:dataOutput id="_D141F6FF-07C3-4F3C-9112-D16EBC10929C_eventOutputX" drools:dtype="String" itemSubjectRef="__D141F6FF-07C3-4F3C-9112-D16EBC10929C_eventOutputXItem" name="event"/>
+      <bpmn2:dataOutput id="_D141F6FF-07C3-4F3C-9112-D16EBC10929C_eventOutputX" drools:dtype="String" itemSubjectRef="__D141F6FF-07C3-4F3C-9112-D16EBC10929C_eventOutputXItem" name="message"/>
       <bpmn2:dataOutputAssociation>
         <bpmn2:sourceRef>_D141F6FF-07C3-4F3C-9112-D16EBC10929C_eventOutputX</bpmn2:sourceRef>
         <bpmn2:targetRef>message</bpmn2:targetRef>

@@ -56,7 +56,11 @@ public interface ProcessInstance extends KogitoProcessInstance,
 
     void start();
 
-    void start(String trigger);
+    default void start(String trigger) {
+        this.start(trigger, null);
+    }
+
+    void start(String trigger, Object payload);
 
     String getOutcome();
 

@@ -138,13 +138,7 @@ public class StartEventHandler extends AbstractNodeHandler {
                 startNode.setMetaData(EVENT_TYPE, EVENT_TYPE_SIGNAL);
                 startNode.setMetaData(MESSAGE_TYPE, type);
                 startNode.setMetaData(TRIGGER_TYPE, TriggerMetaData.TriggerType.Signal.name());
-                Signal signal = findSignalByName(parser, type);
-                if (signal != null) {
-                    String eventType = signal.getStructureRef();
-                    startNode.setMetaData(TRIGGER_REF, eventType);
-                } else {
-                    startNode.setMetaData(TRIGGER_REF, type);
-                }
+                startNode.setMetaData(TRIGGER_REF, type);
             } else if ("messageEventDefinition".equals(nodeName)) {
                 String messageRef = ((Element) xmlNode).getAttribute("messageRef");
                 Map<String, Message> messages = (Map<String, Message>) ((ProcessBuildData) parser.getData()).getMetaData("Messages");

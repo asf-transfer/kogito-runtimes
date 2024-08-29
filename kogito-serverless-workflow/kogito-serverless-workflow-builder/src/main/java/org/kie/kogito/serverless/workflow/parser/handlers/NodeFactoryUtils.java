@@ -86,7 +86,9 @@ public class NodeFactoryUtils {
     }
 
     public static <T extends StartNodeFactory<P>, P extends RuleFlowNodeContainerFactory<P, ?>> T startMessageNode(T nodeFactory, EventDefinition eventDefinition, String inputVar, String outputVar) {
-        return (T) addEventDefinition(messageNode(nodeFactory, eventDefinition.getName(), eventDefinition.getType(), inputVar), eventDefinition).trigger(ServerlessWorkflowParser.JSON_NODE, outputVar);
+        StartNodeFactory<P> startNodeFactory = messageNode(nodeFactory, eventDefinition.getName(), eventDefinition.getType(), inputVar, inputVar);
+        startNodeFactory.outMapping(inputVar, inputVar);
+        return (T) addEventDefinition(startNodeFactory, eventDefinition).trigger(ServerlessWorkflowParser.JSON_NODE, outputVar);
     }
 
     public static <T extends EventNodeFactory<P>, P extends RuleFlowNodeContainerFactory<P, ?>> T consumeMessageNode(T nodeFactory, EventDefinition eventDefinition, String inputVar,
@@ -96,7 +98,7 @@ public class NodeFactoryUtils {
 
     public static <T extends EventNodeFactory<P>, P extends RuleFlowNodeContainerFactory<P, ?>> T consumeMessageNode(T eventNode, String name, String type,
             String inputVar, String outputVar) {
-        return (T) messageNode(eventNode, name, type, inputVar)
+        return (T) messageNode(eventNode, name, type, inputVar, outputVar)
                 .inputVariableName(inputVar)
                 .variableName(outputVar)
                 .outMapping(inputVar, outputVar)
@@ -104,11 +106,12 @@ public class NodeFactoryUtils {
                 .eventType("Message-" + type);
     }
 
-    private static <T extends NodeFactory<T, P>, P extends RuleFlowNodeContainerFactory<P, ?>> T messageNode(T nodeFactory, String name, String type, String inputVar) {
+    private static <T extends NodeFactory<T, P>, P extends RuleFlowNodeContainerFactory<P, ?>> T messageNode(T nodeFactory, String name, String type, String inputVar, String outputVar) {
         return nodeFactory
                 .name(name)
                 .metaData(Metadata.EVENT_TYPE, "message")
                 .metaData(Metadata.TRIGGER_MAPPING, inputVar)
+                .metaData(Metadata.TRIGGER_MAPPING_INPUT, outputVar)
                 .metaData(Metadata.TRIGGER_REF, type)
                 .metaData(Metadata.MESSAGE_TYPE, JSON_NODE)
                 .metaData(Metadata.TRIGGER_TYPE, "ConsumeMessage");

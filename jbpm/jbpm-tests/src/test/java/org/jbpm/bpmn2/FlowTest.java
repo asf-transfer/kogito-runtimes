@@ -45,6 +45,10 @@ import org.jbpm.bpmn2.flow.GatewayTestModel;
 import org.jbpm.bpmn2.flow.GatewayTestProcess;
 import org.jbpm.bpmn2.flow.InclusiveSplitDefaultModel;
 import org.jbpm.bpmn2.flow.InclusiveSplitDefaultProcess;
+import org.jbpm.bpmn2.flow.MultipleFlowEndNodeModel;
+import org.jbpm.bpmn2.flow.MultipleFlowEndNodeProcess;
+import org.jbpm.bpmn2.flow.MultipleInOutgoingSequenceFlowsModel;
+import org.jbpm.bpmn2.flow.MultipleInOutgoingSequenceFlowsProcess;
 import org.jbpm.bpmn2.loop.MultiInstanceLoopCharacteristicsTaskModel;
 import org.jbpm.bpmn2.loop.MultiInstanceLoopCharacteristicsTaskProcess;
 import org.jbpm.bpmn2.objects.TestWorkItemHandler;
@@ -1312,35 +1316,35 @@ public class FlowTest extends JbpmBpmn2TestCase {
 
     @Test
     public void testMultipleInOutgoingSequenceFlows() throws Exception {
+        Application app = ProcessTestHelper.newApplication();
         NodeLeftCountDownProcessEventListener countDownListener = new NodeLeftCountDownProcessEventListener("timer", 1);
-        System.setProperty("jbpm.enable.multi.con", "true");
-        kruntime = createKogitoProcessRuntime("BPMN2-MultipleInOutgoingSequenceFlows.bpmn2");
-        kruntime.getProcessEventManager().addEventListener(countDownListener);
-        final List<String> list = new ArrayList<>();
-        kruntime.getProcessEventManager().addEventListener(new DefaultKogitoProcessEventListener() {
+        ProcessTestHelper.registerProcessEventListener(app, countDownListener);
+        List<String> list = new ArrayList<>();
+        ProcessTestHelper.registerProcessEventListener(app, new DefaultKogitoProcessEventListener() {
             public void beforeProcessStarted(ProcessStartedEvent event) {
                 list.add(((KogitoProcessInstance) event.getProcessInstance()).getStringId());
             }
         });
 
+        org.kie.kogito.process.Process<MultipleInOutgoingSequenceFlowsModel> definition = MultipleInOutgoingSequenceFlowsProcess.newProcess(app);
         assertThat(list).isEmpty();
 
         countDownListener.waitTillCompleted();
 
         assertThat(list).hasSize(1);
-        System.clearProperty("jbpm.enable.multi.con");
 
     }
 
     @Test
     public void testMultipleIncomingFlowToEndNode() throws Exception {
-        System.setProperty("jbpm.enable.multi.con", "true");
+        Application app = ProcessTestHelper.newApplication();
 
-        kruntime = createKogitoProcessRuntime("BPMN2-MultipleFlowEndNode.bpmn2");
+        org.kie.kogito.process.Process<MultipleFlowEndNodeModel> definition = MultipleFlowEndNodeProcess.newProcess(app);
+        org.kie.kogito.process.ProcessInstance<MultipleFlowEndNodeModel> instance = definition.createInstance(definition.createModel());
+        instance.start();
 
-        KogitoProcessInstance processInstance = kruntime.startProcess("MultipleFlowEndNode");
-        assertProcessInstanceCompleted(processInstance);
-        System.clearProperty("jbpm.enable.multi.con");
+        assertThat(instance.status()).isEqualTo(org.kie.kogito.process.ProcessInstance.STATE_COMPLETED);
+
     }
 
     @Test
@@ -1371,7 +1375,7 @@ public class FlowTest extends JbpmBpmn2TestCase {
     @Test
     public void testMultipleInOutgoingSequenceFlowsDisable() throws Exception {
         try {
-            createKogitoProcessRuntime("BPMN2-MultipleInOutgoingSequenceFlows.bpmn2");
+            createKogitoProcessRuntime("org/jbpm/bpmn2/flow/BPMN2-MultipleInOutgoingSequenceFlowsDisabled.bpmn2");
             fail("Should fail as multiple outgoing and incoming connections are disabled by default");
         } catch (Exception e) {
             assertThat(e.getMessage()).contains("This type of node [ScriptTask_1, Script Task] cannot have more than one outgoing connection!");

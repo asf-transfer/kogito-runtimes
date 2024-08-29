@@ -20,7 +20,7 @@
 
 <bpmn2:definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.omg.org/bpmn20" xmlns:bpmn2="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:bpsim="http://www.bpsim.org/schemas/1.0" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:drools="http://www.jboss.org/drools" id="_tUAN0JQIEeOXD5k8BOeZLg" xsi:schemaLocation="http://www.omg.org/spec/BPMN/20100524/MODEL BPMN20.xsd http://www.jboss.org/drools drools.xsd http://www.bpsim.org/schemas/1.0 bpsim.xsd" expressionLanguage="http://www.mvel.org/2.0" targetNamespace="http://www.omg.org/bpmn20" typeLanguage="http://www.java.com/javaTypes">
   <bpmn2:signal id="startSignal" name="startSignal"/>
-  <bpmn2:process id="muliplestartevents" drools:packageName="org.jbpm" drools:version="1.0" name="test" isExecutable="true">
+  <bpmn2:process id="MultipleStartEventProcessDifferentPaths" drools:packageName="org.jbpm.bpmn2.flow" drools:version="1.0" name="test" isExecutable="true">
     <bpmn2:startEvent id="_F0ECBD8A-A749-4D2B-B5F5-F27E5B64188B" drools:bgcolor="#9acd32" drools:selectable="true" name="Start">
       <bpmn2:outgoing>_FB0F9D1A-F991-46AA-8930-CC9A28561303</bpmn2:outgoing>
     </bpmn2:startEvent>

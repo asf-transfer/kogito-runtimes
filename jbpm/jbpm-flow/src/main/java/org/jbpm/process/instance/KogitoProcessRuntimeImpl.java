@@ -52,6 +52,11 @@ public class KogitoProcessRuntimeImpl implements KogitoProcessRuntime {
     }
 
     @Override
+    public KogitoProcessInstance startProcess(String processId, String trigger, Map<String, Object> parameters) {
+        return (KogitoProcessInstance) delegate.startProcess(processId, trigger, parameters);
+    }
+
+    @Override
     public KogitoProcessInstance createProcessInstance(String processId, Map<String, Object> parameters) {
         return (KogitoProcessInstance) delegate.createProcessInstance(processId, parameters);
     }
@@ -157,10 +162,22 @@ public class KogitoProcessRuntimeImpl implements KogitoProcessRuntime {
         return null;
     }
 
-    public KogitoProcessInstance startProcessInstance(String processInstanceId, String trigger, AgendaFilter agendaFilter) {
+    @Override
+    public KogitoProcessInstance triggerProcessInstance(String processInstanceId, String trigger, Object payload, AgendaFilter agendaFilter) {
         KogitoProcessInstance processInstance = getProcessInstance(processInstanceId);
         org.jbpm.process.instance.ProcessInstance jbpmProcessInstance = (org.jbpm.process.instance.ProcessInstance) processInstance;
 
+        jbpmProcessInstance.configureTimers();
+        delegate.getProcessEventSupport().fireBeforeProcessStarted(processInstance, delegate.getInternalKieRuntime());
+        jbpmProcessInstance.setAgendaFilter(agendaFilter);
+        jbpmProcessInstance.start(trigger, payload);
+        delegate.getProcessEventSupport().fireAfterProcessStarted(processInstance, delegate.getInternalKieRuntime());
+        return jbpmProcessInstance;
+    }
+
+    public KogitoProcessInstance startProcessInstance(String processInstanceId, String trigger, AgendaFilter agendaFilter) {
+        KogitoProcessInstance processInstance = getProcessInstance(processInstanceId);
+        org.jbpm.process.instance.ProcessInstance jbpmProcessInstance = (org.jbpm.process.instance.ProcessInstance) processInstance;
         jbpmProcessInstance.configureTimers();
         delegate.getProcessEventSupport().fireBeforeProcessStarted(processInstance, delegate.getInternalKieRuntime());
         jbpmProcessInstance.setAgendaFilter(agendaFilter);
@@ -173,4 +190,5 @@ public class KogitoProcessRuntimeImpl implements KogitoProcessRuntime {
     public Application getApplication() {
         return delegate.getApplication();
     }
+
 }

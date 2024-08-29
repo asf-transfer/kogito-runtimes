@@ -26,7 +26,9 @@ import org.jbpm.workflow.core.Node;
 import org.jbpm.workflow.core.impl.NodeIoHelper;
 import org.jbpm.workflow.core.node.StartNode;
 import org.jbpm.workflow.instance.impl.NodeInstanceImpl;
+import org.kie.kogito.Model;
 import org.kie.kogito.internal.process.runtime.KogitoNodeInstance;
+import org.mvel2.MVEL;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,14 +58,19 @@ public class StartNodeInstance extends NodeInstanceImpl {
     }
 
     public void signalEvent(String type, Object event) {
+        String variableName = (String) getStartNode().getMetaData(TRIGGER_MAPPING_INPUT);
+        if (variableName == null) {
+            variableName = "event";
+        }
+        Object payload = event instanceof Model ? MVEL.eval(variableName, event) : event;
+
         if (triggerTime == null) {
             triggerTime = new Date();
         }
-        String variableName = (String) getStartNode().getMetaData(TRIGGER_MAPPING_INPUT);
-        if (variableName != null) {
-            Map<String, Object> outputSet = Collections.singletonMap(variableName, event);
-            NodeIoHelper.processOutputs(this, key -> outputSet.get(key), varName -> this.getVariable(varName));
-        }
+        Map<String, Object> outputSet = Collections.singletonMap(variableName, payload);
+        logger.debug("Start Node Instance signaled with {} and payload {} -> output set {}", type, payload, outputSet);
+        NodeIoHelper.processOutputs(this, key -> outputSet.get(key), varName -> this.getVariable(varName));
+
         triggerCompleted();
     }
 

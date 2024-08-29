@@ -419,4 +419,14 @@ class DummyKnowledgeRuntime implements InternalKnowledgeRuntime, KogitoProcessRu
     public Application getApplication() {
         return processRuntime.getApplication();
     }
+
+    @Override
+    public KogitoProcessInstance triggerProcessInstance(String processInstanceId, String trigger, Object payload, AgendaFilter agendaFilter) {
+        return processRuntime.getKogitoProcessRuntime().triggerProcessInstance(processInstanceId, trigger, payload, agendaFilter);
+    }
+
+    @Override
+    public KogitoProcessInstance startProcess(String processId, String trigger, Map<String, Object> parameters) {
+        return processRuntime.getKogitoProcessRuntime().startProcess(processId, parameters, null);
+    }
 }

@@ -65,7 +65,7 @@
     <bpmn2:intermediateThrowEvent id="_A53EEE5A-DA93-4E89-B358-07BA2B230601">
       <bpmn2:incoming>_22E9B40B-DB0F-46D3-8192-5A696EC7D2E9</bpmn2:incoming>
       <bpmn2:outgoing>_A08EBC7F-3F56-4356-A5F1-AD91C506D24A</bpmn2:outgoing>
-      <bpmn2:dataInput id="_A53EEE5A-DA93-4E89-B358-07BA2B230601_eventInputX" drools:dtype="String" itemSubjectRef="__A53EEE5A-DA93-4E89-B358-07BA2B230601_eventInputXItem" name="event"/>
+      <bpmn2:dataInput id="_A53EEE5A-DA93-4E89-B358-07BA2B230601_eventInputX" drools:dtype="String" itemSubjectRef="__A53EEE5A-DA93-4E89-B358-07BA2B230601_eventInputXItem" name="message"/>
       <bpmn2:dataInputAssociation>
         <bpmn2:sourceRef>message</bpmn2:sourceRef>
         <bpmn2:targetRef>_A53EEE5A-DA93-4E89-B358-07BA2B230601_eventInputX</bpmn2:targetRef>

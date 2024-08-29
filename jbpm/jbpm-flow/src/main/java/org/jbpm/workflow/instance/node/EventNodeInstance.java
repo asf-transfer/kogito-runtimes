@@ -44,6 +44,8 @@ import org.kie.kogito.process.BaseEventDescription;
 import org.kie.kogito.process.EventDescription;
 import org.kie.kogito.process.NamedDataType;
 import org.kie.kogito.timer.TimerInstance;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static org.jbpm.workflow.instance.impl.DummyEventListener.EMPTY_EVENT_LISTENER;
 import static org.jbpm.workflow.instance.node.TimerNodeInstance.TIMER_TRIGGERED_EVENT;
@@ -53,11 +55,12 @@ import static org.jbpm.workflow.instance.node.TimerNodeInstance.TIMER_TRIGGERED_
  * 
  */
 public class EventNodeInstance extends ExtendedNodeInstanceImpl implements KogitoEventListener, EventNodeInstanceInterface, EventBasedNodeInstanceInterface {
-
+    protected static final Logger logger = LoggerFactory.getLogger(EventNodeInstance.class);
     private static final long serialVersionUID = 510l;
 
     @Override
     public void signalEvent(String type, Object event, Function<String, Object> varResolver) {
+        logger.debug("event node triggered {} with event {}", type, event);
         if (TIMER_TRIGGERED_EVENT.equals(type)) {
             TimerInstance timerInstance = (TimerInstance) event;
             if (timerInstance.getId().equals(slaTimerId)) {

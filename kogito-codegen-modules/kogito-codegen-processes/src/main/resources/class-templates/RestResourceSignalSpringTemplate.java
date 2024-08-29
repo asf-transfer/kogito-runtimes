@@ -40,14 +40,13 @@ public class $Type$Resource {
         $Type$ model = new $Type$();
         model.set$SetModelMethodName$(data);
 
-        this.processService.createProcessInstance(process,
-                                                  businessKey,
-                                                  model,
-                                                  httpHeaders,
-                                                  httpHeaders.getOrEmpty("X-KOGITO-StartFromNode").stream().findFirst().orElse(null),
-                                                  "$signalName$",
-                                                  httpHeaders.getOrEmpty("X-KOGITO-ReferenceId").stream().findFirst().orElse(null),
-                                                  null);
+        this.processService.createProcessInstanceBySignal(process,
+                businessKey,
+                model,
+                httpHeaders,
+                "$signalName$",
+                httpHeaders.getOrEmpty("X-KOGITO-ReferenceId").stream().findFirst().orElse(null),
+                null);
 
         return ResponseEntity.accepted().build();
     }

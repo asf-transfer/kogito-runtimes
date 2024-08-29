@@ -42,6 +42,7 @@ import org.jbpm.compiler.xml.XmlProcessReader;
 import org.jbpm.compiler.xml.core.SemanticModules;
 import org.jbpm.ruleflow.core.RuleFlowProcess;
 import org.kie.kogito.internal.process.runtime.KogitoWorkflowProcess;
+import org.kie.kogito.internal.utils.ConversionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,6 +66,8 @@ import com.github.javaparser.ast.stmt.BlockStmt;
 import com.github.javaparser.ast.type.ClassOrInterfaceType;
 import com.github.javaparser.printer.DefaultPrettyPrinter;
 import com.github.javaparser.printer.Printer;
+
+import static java.nio.file.Files.getLastModifiedTime;
 
 public class ProcessCodeGenerationSupport {
     private static final Logger LOG = LoggerFactory.getLogger(ProcessCodeGenerationSupport.class);
@@ -139,6 +142,13 @@ public class ProcessCodeGenerationSupport {
             XmlProcessReader xmlReader = new XmlProcessReader(bpmnSemanticModules, Thread.currentThread().getContextClassLoader());
             List<KogitoWorkflowProcess> processes = xmlReader.read(reader).stream().map(KogitoWorkflowProcess.class::cast).toList();
             for (KogitoWorkflowProcess process : processes) {
+                Path path = getPath(process.getPackageName(), process.getId());
+
+                if (Files.exists(path) && getLastModifiedTime(workflow).compareTo(getLastModifiedTime(path)) <= 0) {
+                    LOG.debug("nothing changed in {}", workflow);
+                    break;
+                }
+
                 this.generateJavaCode(process);
             }
             return new JavaCodeResult(workflow, true);
@@ -225,6 +235,13 @@ public class ProcessCodeGenerationSupport {
         for (CompilationUnit handler : metadata.getGeneratedHandlers().values()) {
             writeCompilationUnit(handler);
         }
+    }
+
+    private Path getPath(String packageName, String processId) {
+        String folder = packageName.replaceAll("\\.", "/");
+
+        Path outputFolder = Paths.get(rootOutputFolder.toString(), folder);
+        return Paths.get(outputFolder.toString(), ConversionUtils.sanitizeClassName(processId) + "Process.java");
     }
 
     private void writeCompilationUnit(CompilationUnit unit) throws IOException {

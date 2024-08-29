@@ -503,7 +503,7 @@ public abstract class WorkflowProcessInstanceImpl extends ProcessInstanceImpl im
     }
 
     @Override
-    public void start(String trigger) {
+    public void start(String trigger, Object payload) {
         synchronized (this) {
             setStartDate(new Date());
             registerExternalEventNodeListeners();
@@ -518,7 +518,7 @@ public abstract class WorkflowProcessInstanceImpl extends ProcessInstanceImpl im
                     }
                 }
             }
-            super.start(trigger);
+            super.start(trigger, payload);
         }
     }
 

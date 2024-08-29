@@ -18,6 +18,10 @@
  */
 package com.myspace.demo;
 
+import java.util.List;
+import java.util.Map;
+
+import org.kie.kogito.correlation.CompositeCorrelation;
 import org.kie.kogito.process.Process;
 import org.kie.kogito.process.ProcessInstance;
 
@@ -34,12 +38,11 @@ public class $Type$Resource {
                                   @QueryParam("businessKey") @DefaultValue("") String businessKey,
                                   $signalType$ data) {
         $Type$ model = new $Type$();
-        model.set$SetModelMethodName$(data);
-        this.processService.createProcessInstance(process,
+        model.set$SetModelMethodName$(data);        
+        this.processService.createProcessInstanceBySignal(process,
                                                   businessKey,
                                                   model,
                                                   httpHeaders.getRequestHeaders(),
-                                                  httpHeaders.getHeaderString("X-KOGITO-StartFromNode"),
                                                   "$signalName$",
                                                   httpHeaders.getHeaderString("X-KOGITO-ReferenceId"),
                                                   null);

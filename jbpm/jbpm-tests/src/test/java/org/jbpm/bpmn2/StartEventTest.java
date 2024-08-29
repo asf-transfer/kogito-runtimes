@@ -31,6 +31,9 @@ import java.util.Map;
 
 import org.jbpm.bpmn2.event.ConditionalStartModel;
 import org.jbpm.bpmn2.event.ConditionalStartProcess;
+import org.jbpm.bpmn2.flow.MultipleStartEventProcessDifferentPathsModel;
+import org.jbpm.bpmn2.flow.MultipleStartEventProcessDifferentPathsProcess;
+import org.jbpm.bpmn2.flow.MultipleStartEventProcessDifferentPathsProcessInstance;
 import org.jbpm.bpmn2.objects.NotAvailableGoodsReport;
 import org.jbpm.bpmn2.objects.Person;
 import org.jbpm.bpmn2.objects.TestWorkItemHandler;
@@ -38,6 +41,7 @@ import org.jbpm.bpmn2.start.SignalStartWithTransformationModel;
 import org.jbpm.bpmn2.start.SignalStartWithTransformationProcess;
 import org.jbpm.process.instance.impl.demo.SystemOutWorkItemHandler;
 import org.jbpm.test.util.NodeLeftCountDownProcessEventListener;
+import org.jbpm.test.util.ProcessStartedCountDownProcessEventListener;
 import org.jbpm.test.utils.EventTrackerProcessListener;
 import org.jbpm.test.utils.ProcessTestHelper;
 import org.junit.jupiter.api.Disabled;
@@ -53,6 +57,7 @@ import org.kie.kogito.Application;
 import org.kie.kogito.internal.process.event.DefaultKogitoProcessEventListener;
 import org.kie.kogito.internal.process.runtime.KogitoProcessInstance;
 import org.kie.kogito.internal.process.runtime.KogitoWorkItem;
+import org.kie.kogito.process.Processes;
 import org.kie.kogito.process.impl.Sig;
 import org.kie.kogito.process.workitems.InternalKogitoWorkItem;
 
@@ -352,106 +357,113 @@ public class StartEventTest extends JbpmBpmn2TestCase {
 
     @Test
     public void testMultipleEventBasedStartEventsDifferentPaths() throws Exception {
-        kruntime = createKogitoProcessRuntime("BPMN2-MultipleStartEventProcessDifferentPaths.bpmn2");
+        List<String> list = new ArrayList<>();
 
+        Application app = ProcessTestHelper.newApplication();
         TestWorkItemHandler workItemHandler = new TestWorkItemHandler();
-        kruntime.getKogitoWorkItemManager().registerWorkItemHandler("Human Task",
-                workItemHandler);
-
-        final List<String> list = new ArrayList<>();
-        kruntime.getProcessEventManager().addEventListener(new DefaultKogitoProcessEventListener() {
+        ProcessTestHelper.registerHandler(app, "Human Task", workItemHandler);
+        ProcessTestHelper.registerProcessEventListener(app, new DefaultKogitoProcessEventListener() {
             @Override
             public void afterProcessStarted(ProcessStartedEvent event) {
                 list.add(((KogitoProcessInstance) event.getProcessInstance()).getStringId());
             }
         });
+        EventTrackerProcessListener tracked = new EventTrackerProcessListener();
+        ProcessTestHelper.registerProcessEventListener(app, tracked);
+        org.kie.kogito.process.Process<MultipleStartEventProcessDifferentPathsModel> definition = MultipleStartEventProcessDifferentPathsProcess.newProcess(app);
 
-        kruntime.startProcess("muliplestartevents");
+        org.kie.kogito.process.ProcessInstance<MultipleStartEventProcessDifferentPathsModel> instance = definition.createInstance(definition.createModel());
+        instance.start();
 
         assertThat(list).hasSize(1);
         KogitoWorkItem workItem = workItemHandler.getWorkItem();
-        String processInstanceId = workItem.getProcessInstanceStringId();
-
-        KogitoProcessInstance processInstance = kruntime
-                .getProcessInstance(processInstanceId);
-
         assertThat(workItem).isNotNull();
         assertThat(workItem.getParameter("ActorId")).isEqualTo("john");
-        kruntime.getKogitoWorkItemManager().completeWorkItem(workItem.getStringId(), null);
-        assertProcessInstanceFinished(processInstance, kruntime);
-        assertNodeTriggered(processInstanceId, "Start", "Script 1", "User task", "End");
+
+        ProcessTestHelper.completeWorkItem(instance, Collections.emptyMap(), "john");
+
+        assertThat(instance.status()).isEqualTo(org.kie.kogito.process.ProcessInstance.STATE_COMPLETED);
+
+        assertThat(tracked.tracked())
+                .anyMatch(ProcessTestHelper.triggered("Start"))
+                .anyMatch(ProcessTestHelper.triggered("Script 1"))
+                .anyMatch(ProcessTestHelper.triggered("User task"))
+                .anyMatch(ProcessTestHelper.triggered("End"));
     }
 
     @Test
     public void testMultipleEventBasedStartEventsTimerDifferentPaths() throws Exception {
-        NodeLeftCountDownProcessEventListener countDownListener = new NodeLeftCountDownProcessEventListener("StartTimer", 2);
-        kruntime = createKogitoProcessRuntime("BPMN2-MultipleStartEventProcessDifferentPaths.bpmn2");
-        kruntime.getProcessEventManager().addEventListener(countDownListener);
+        List<String> list = new ArrayList<>();
 
+        Application app = ProcessTestHelper.newApplication();
         TestWorkItemHandler workItemHandler = new TestWorkItemHandler();
-        kruntime.getKogitoWorkItemManager().registerWorkItemHandler("Human Task",
-                workItemHandler);
-
-        final List<String> list = new ArrayList<>();
-        kruntime.getProcessEventManager().addEventListener(new DefaultKogitoProcessEventListener() {
-            @Override
-            public void beforeProcessStarted(ProcessStartedEvent event) {
-                list.add(((KogitoProcessInstance) event.getProcessInstance()).getStringId());
-            }
-        });
-
-        assertThat(list).isEmpty();
-        // Timer in the process takes 1000ms, so after 2 seconds, there should be 2 process IDs in the list.
-        countDownListener.waitTillCompleted();
-
-        assertThat(list).hasSize(2);
-        List<KogitoWorkItem> workItems = workItemHandler.getWorkItems();
-
-        for (KogitoWorkItem workItem : workItems) {
-            String processInstanceId = workItem.getProcessInstanceStringId();
-
-            KogitoProcessInstance processInstance = kruntime
-                    .getProcessInstance(processInstanceId);
-
-            assertThat(workItem).isNotNull();
-            assertThat(workItem.getParameter("ActorId")).isEqualTo("john");
-            kruntime.getKogitoWorkItemManager().completeWorkItem(workItem.getStringId(), null);
-            assertProcessInstanceFinished(processInstance, kruntime);
-            assertNodeTriggered(processInstanceId, "StartTimer", "Script 2", "User task", "End");
-        }
-    }
-
-    @Test
-    public void testMultipleEventBasedStartEventsSignalDifferentPaths() throws Exception {
-        kruntime = createKogitoProcessRuntime("BPMN2-MultipleStartEventProcessDifferentPaths.bpmn2");
-
-        TestWorkItemHandler workItemHandler = new TestWorkItemHandler();
-        kruntime.getKogitoWorkItemManager().registerWorkItemHandler("Human Task",
-                workItemHandler);
-
-        final List<String> list = new ArrayList<>();
-        kruntime.getProcessEventManager().addEventListener(new DefaultKogitoProcessEventListener() {
+        ProcessTestHelper.registerHandler(app, "Human Task", workItemHandler);
+        ProcessStartedCountDownProcessEventListener countDownListener = new ProcessStartedCountDownProcessEventListener(2);
+        EventTrackerProcessListener tracked = new EventTrackerProcessListener();
+        ProcessTestHelper.registerProcessEventListener(app, countDownListener, tracked, new DefaultKogitoProcessEventListener() {
             @Override
             public void afterProcessStarted(ProcessStartedEvent event) {
                 list.add(((KogitoProcessInstance) event.getProcessInstance()).getStringId());
             }
         });
+        MultipleStartEventProcessDifferentPathsProcess.newProcess(app);
 
-        kruntime.signalEvent("startSignal", null);
+        assertThat(list).hasSize(0);
+        countDownListener.waitTillCompleted();
+        assertThat(list).hasSize(2);
+
+        for (KogitoWorkItem workItem : workItemHandler.getWorkItems()) {
+            MultipleStartEventProcessDifferentPathsProcess p =
+                    (MultipleStartEventProcessDifferentPathsProcess) app.get(Processes.class).processByProcessInstanceId(workItem.getProcessInstance().getId()).get();
+            MultipleStartEventProcessDifferentPathsProcessInstance pi = (MultipleStartEventProcessDifferentPathsProcessInstance) p.instances().findById(workItem.getProcessInstanceStringId()).get();
+            ProcessTestHelper.completeWorkItem(pi, Collections.emptyMap(), "john");
+            assertThat(pi.status()).isEqualTo(org.kie.kogito.process.ProcessInstance.STATE_COMPLETED);
+
+            assertThat(tracked.tracked())
+                    .filteredOn(e -> e.getProcessInstance().getId().equals(pi.id()))
+                    .anyMatch(ProcessTestHelper.left("StartTimer"))
+                    .anyMatch(ProcessTestHelper.triggered("Script 2"))
+                    .anyMatch(ProcessTestHelper.triggered("User task"))
+                    .anyMatch(ProcessTestHelper.triggered("End"));
+        }
+
+    }
+
+    @Test
+    public void testMultipleEventBasedStartEventsSignalDifferentPaths() throws Exception {
+        List<String> list = new ArrayList<>();
+
+        Application app = ProcessTestHelper.newApplication();
+        TestWorkItemHandler workItemHandler = new TestWorkItemHandler();
+        ProcessTestHelper.registerHandler(app, "Human Task", workItemHandler);
+        EventTrackerProcessListener tracked = new EventTrackerProcessListener();
+        ProcessTestHelper.registerProcessEventListener(app, tracked, new DefaultKogitoProcessEventListener() {
+            @Override
+            public void beforeProcessStarted(ProcessStartedEvent event) {
+                list.add(((KogitoProcessInstance) event.getProcessInstance()).getStringId());
+                logger.info("Process has started {}", list.get(list.size() - 1));
+            }
+        });
+
+        org.kie.kogito.process.Process<MultipleStartEventProcessDifferentPathsModel> definition = MultipleStartEventProcessDifferentPathsProcess.newProcess(app);
+
+        definition.send(Sig.of("startSignal"));
 
         assertThat(list).hasSize(1);
-        KogitoWorkItem workItem = workItemHandler.getWorkItem();
-        String processInstanceId = ((InternalKogitoWorkItem) workItem)
-                .getProcessInstanceStringId();
+        for (String processInstanceId : list) {
+            MultipleStartEventProcessDifferentPathsProcess p =
+                    (MultipleStartEventProcessDifferentPathsProcess) app.get(Processes.class).processByProcessInstanceId(processInstanceId).get();
+            MultipleStartEventProcessDifferentPathsProcessInstance pi = (MultipleStartEventProcessDifferentPathsProcessInstance) p.instances().findById(processInstanceId).get();
+            ProcessTestHelper.completeWorkItem(pi, Collections.emptyMap(), "john");
+            assertThat(pi.status()).isEqualTo(org.kie.kogito.process.ProcessInstance.STATE_COMPLETED);
 
-        KogitoProcessInstance processInstance = kruntime
-                .getProcessInstance(processInstanceId);
+            assertThat(tracked.tracked())
+                    .anyMatch(ProcessTestHelper.left("StartSignal"))
+                    .anyMatch(ProcessTestHelper.triggered("Script 3"))
+                    .anyMatch(ProcessTestHelper.triggered("User task"))
+                    .anyMatch(ProcessTestHelper.triggered("End"));
+        }
 
-        assertThat(workItem).isNotNull();
-        assertThat(workItem.getParameter("ActorId")).isEqualTo("john");
-        kruntime.getKogitoWorkItemManager().completeWorkItem(workItem.getStringId(), null);
-        assertProcessInstanceFinished(processInstance, kruntime);
-        assertNodeTriggered(processInstanceId, "StartSignal", "Script 3", "User task", "End");
     }
 
     @Test

@@ -20,9 +20,11 @@ package org.jbpm.ruleflow.instance;
 
 import java.util.List;
 
+import org.jbpm.ruleflow.core.Metadata;
 import org.jbpm.ruleflow.core.RuleFlowProcess;
 import org.jbpm.workflow.core.node.StartNode;
 import org.jbpm.workflow.instance.impl.WorkflowProcessInstanceImpl;
+import org.jbpm.workflow.instance.node.StartNodeInstance;
 import org.kie.api.definition.process.Node;
 
 public class RuleFlowProcessInstance extends WorkflowProcessInstanceImpl {
@@ -33,10 +35,15 @@ public class RuleFlowProcessInstance extends WorkflowProcessInstanceImpl {
         return (RuleFlowProcess) getProcess();
     }
 
-    public void internalStart(String trigger) {
-        StartNode startNode = getRuleFlowProcess().getStart(trigger, varName -> getVariable(varName));
+    @Override
+    public void internalStart(String trigger, Object payload) {
+        StartNode startNode = getRuleFlowProcess().getStart(trigger, payload);
         if (startNode != null) {
-            getNodeInstance(startNode).trigger(null, null);
+            if (Metadata.EVENT_TYPE_NONE.equals(startNode.getMetaData(Metadata.EVENT_TYPE))) {
+                getNodeInstance(startNode).trigger(null, null);
+            } else {
+                ((StartNodeInstance) getNodeInstance(startNode)).signalEvent(trigger, payload);
+            }
         } else if (!getRuleFlowProcess().isDynamic()) {
             throw new IllegalArgumentException("There is no start node that matches the trigger " + (trigger == null ? "none" : trigger));
         }
@@ -45,4 +52,5 @@ public class RuleFlowProcessInstance extends WorkflowProcessInstanceImpl {
         List<Node> autoStartNodes = getRuleFlowProcess().getAutoStartNodes();
         autoStartNodes.forEach(autoStartNode -> signalEvent(autoStartNode.getName(), null));
     }
+
 }

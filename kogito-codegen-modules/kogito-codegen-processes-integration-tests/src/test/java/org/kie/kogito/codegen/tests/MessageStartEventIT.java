@@ -21,13 +21,21 @@ package org.kie.kogito.codegen.tests;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.commons.lang3.mutable.Mutable;
+import org.apache.commons.lang3.mutable.MutableObject;
+import org.jbpm.ruleflow.instance.RuleFlowProcessInstance;
 import org.junit.jupiter.api.Test;
+import org.kie.api.event.process.ProcessStartedEvent;
 import org.kie.kogito.Application;
 import org.kie.kogito.Model;
 import org.kie.kogito.codegen.AbstractCodegenIT;
+import org.kie.kogito.internal.process.event.DefaultKogitoProcessEventListener;
 import org.kie.kogito.process.Process;
+import org.kie.kogito.process.ProcessConfig;
 import org.kie.kogito.process.ProcessInstance;
 import org.kie.kogito.process.Processes;
+import org.kie.kogito.process.impl.CachedProcessEventListenerConfig;
+import org.kie.kogito.process.impl.Sig;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -37,22 +45,20 @@ public class MessageStartEventIT extends AbstractCodegenIT {
     public void testMessageStartEventProcess() throws Exception {
 
         Application app = generateCodeProcessesOnly("messagestartevent/MessageStartEvent.bpmn2");
-        assertThat(app).isNotNull();
+        ((CachedProcessEventListenerConfig) app.config().get(ProcessConfig.class).processEventListeners()).register(new DefaultKogitoProcessEventListener() {
 
+            @Override
+            public void afterProcessStarted(ProcessStartedEvent event) {
+                assertThat(event.getProcessInstance().getState()).isEqualTo(ProcessInstance.STATE_COMPLETED);
+                assertThat(((RuleFlowProcessInstance) event.getProcessInstance()).getVariable("customerId")).isEqualTo("CUS-00998877");
+            }
+
+        });
         Process<? extends Model> p = app.get(Processes.class).processById("MessageStartEvent");
 
-        Model m = p.createModel();
-        Map<String, Object> parameters = new HashMap<>();
-        parameters.put("customerId", "CUS-00998877");
-        m.fromMap(parameters);
+        assertThat(app).isNotNull();
+        p.send(Sig.of("customers", "CUS-00998877"));
 
-        ProcessInstance<?> processInstance = p.createInstance(m);
-        processInstance.start("customers", null);
-
-        assertThat(processInstance.status()).isEqualTo(ProcessInstance.STATE_COMPLETED);
-        Model result = (Model) processInstance.variables();
-        assertThat(result.toMap()).hasSize(1).containsKeys("customerId");
-        assertThat(result.toMap().get("customerId")).isNotNull().isEqualTo("CUS-00998877");
     }
 
     @Test
@@ -60,21 +66,19 @@ public class MessageStartEventIT extends AbstractCodegenIT {
 
         Application app = generateCodeProcessesOnly("messagestartevent/MessageStartAndEndEvent.bpmn2");
         assertThat(app).isNotNull();
+        ((CachedProcessEventListenerConfig) app.config().get(ProcessConfig.class).processEventListeners()).register(new DefaultKogitoProcessEventListener() {
+
+            @Override
+            public void afterProcessStarted(ProcessStartedEvent event) {
+                assertThat(event.getProcessInstance().getState()).isEqualTo(ProcessInstance.STATE_COMPLETED);
+                assertThat(((RuleFlowProcessInstance) event.getProcessInstance()).getVariable("customerId")).isEqualTo("CUS-00998877");
+            }
+
+        });
 
         Process<? extends Model> p = app.get(Processes.class).processById("MessageStartEvent");
+        p.send(Sig.of("customers", "CUS-00998877"));
 
-        Model m = p.createModel();
-        Map<String, Object> parameters = new HashMap<>();
-        parameters.put("customerId", "CUS-00998877");
-        m.fromMap(parameters);
-
-        ProcessInstance<?> processInstance = p.createInstance(m);
-        processInstance.start("customers", null);
-
-        assertThat(processInstance.status()).isEqualTo(ProcessInstance.STATE_COMPLETED);
-        Model result = (Model) processInstance.variables();
-        assertThat(result.toMap()).hasSize(1).containsKeys("customerId");
-        assertThat(result.toMap().get("customerId")).isNotNull().isEqualTo("CUS-00998877");
     }
 
     @Test
@@ -82,9 +86,21 @@ public class MessageStartEventIT extends AbstractCodegenIT {
 
         Application app = generateCodeProcessesOnly("messagestartevent/NoneAndMessageStartEvent.bpmn2");
         assertThat(app).isNotNull();
+        Mutable<String> mutablePath = new MutableObject<>();
+        ((CachedProcessEventListenerConfig) app.config().get(ProcessConfig.class).processEventListeners()).register(new DefaultKogitoProcessEventListener() {
+
+            @Override
+            public void afterProcessStarted(ProcessStartedEvent event) {
+                assertThat(event.getProcessInstance().getState()).isEqualTo(ProcessInstance.STATE_COMPLETED);
+                assertThat(((RuleFlowProcessInstance) event.getProcessInstance()).getVariable("customerId")).isEqualTo("CUS-00998877");
+                assertThat(((RuleFlowProcessInstance) event.getProcessInstance()).getVariable("path")).isNotNull().isEqualTo(mutablePath.getValue());
+            }
+
+        });
+
+        mutablePath.setValue("none");
 
         Process<? extends Model> p = app.get(Processes.class).processById("MessageStartEvent");
-
         Model m = p.createModel();
         Map<String, Object> parameters = new HashMap<>();
         parameters.put("customerId", "CUS-00998877");
@@ -93,20 +109,8 @@ public class MessageStartEventIT extends AbstractCodegenIT {
         ProcessInstance<?> processInstance = p.createInstance(m);
         processInstance.start();
 
-        assertThat(processInstance.status()).isEqualTo(ProcessInstance.STATE_COMPLETED);
-        Model result = (Model) processInstance.variables();
-        assertThat(result.toMap()).hasSize(2).containsKeys("customerId", "path");
-        assertThat(result.toMap().get("customerId")).isNotNull().isEqualTo("CUS-00998877");
-        assertThat(result.toMap().get("path")).isNotNull().isEqualTo("none");
+        mutablePath.setValue("message");
+        p.send(Sig.of("customers", "CUS-00998877"));
 
-        // next start it via message start event
-        processInstance = p.createInstance(m);
-        processInstance.start("customers", null);
-
-        assertThat(processInstance.status()).isEqualTo(ProcessInstance.STATE_COMPLETED);
-        result = (Model) processInstance.variables();
-        assertThat(result.toMap()).hasSize(2).containsKeys("customerId", "path");
-        assertThat(result.toMap().get("customerId")).isNotNull().isEqualTo("CUS-00998877");
-        assertThat(result.toMap().get("path")).isNotNull().isEqualTo("message");
     }
 }

@@ -19,7 +19,6 @@
 package org.jbpm.process.instance;
 
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -42,25 +41,19 @@ import org.jbpm.process.instance.event.DefaultSignalManagerFactory;
 import org.jbpm.process.instance.event.KogitoProcessEventSupportImpl;
 import org.jbpm.process.instance.impl.DefaultProcessInstanceManagerFactory;
 import org.jbpm.ruleflow.core.RuleFlowProcess;
-import org.jbpm.workflow.core.impl.DataAssociation;
-import org.jbpm.workflow.core.impl.NodeIoHelper;
 import org.jbpm.workflow.core.node.EventTrigger;
 import org.jbpm.workflow.core.node.StartNode;
 import org.jbpm.workflow.core.node.Trigger;
 import org.kie.api.KieBase;
-import org.kie.api.command.ExecutableCommand;
 import org.kie.api.definition.process.Node;
 import org.kie.api.definition.process.Process;
 import org.kie.api.event.rule.DefaultAgendaEventListener;
 import org.kie.api.event.rule.MatchCreatedEvent;
 import org.kie.api.event.rule.RuleFlowGroupDeactivatedEvent;
-import org.kie.api.runtime.Context;
-import org.kie.api.runtime.KieSession;
 import org.kie.api.runtime.process.EventListener;
 import org.kie.api.runtime.process.ProcessInstance;
 import org.kie.api.runtime.process.WorkItemManager;
 import org.kie.api.runtime.rule.AgendaFilter;
-import org.kie.internal.command.RegistryContext;
 import org.kie.internal.process.CorrelationKey;
 import org.kie.internal.runtime.StatefulKnowledgeSession;
 import org.kie.kogito.Application;
@@ -77,8 +70,6 @@ import org.kie.kogito.services.uow.CollectingUnitOfWorkFactory;
 import org.kie.kogito.services.uow.DefaultUnitOfWorkManager;
 import org.kie.kogito.signal.SignalManager;
 import org.kie.kogito.uow.UnitOfWorkManager;
-
-import static org.jbpm.ruleflow.core.Metadata.TRIGGER_MAPPING_INPUT;
 
 public class ProcessRuntimeImpl extends AbstractProcessRuntime {
 
@@ -149,6 +140,11 @@ public class ProcessRuntimeImpl extends AbstractProcessRuntime {
     }
 
     public ProcessInstance startProcess(String processId, Map<String, Object> parameters, String trigger) {
+        return kogitoProcessRuntime.startProcess(processId, parameters, trigger, null);
+    }
+
+    @Override
+    public KogitoProcessInstance startProcess(String processId, String trigger, Map<String, Object> parameters) {
         return kogitoProcessRuntime.startProcess(processId, parameters, trigger, null);
     }
 
@@ -296,7 +292,7 @@ public class ProcessRuntimeImpl extends AbstractProcessRuntime {
                                             type = ((EventTypeFilter) filter).getType();
                                         }
                                     }
-                                    StartProcessEventListener listener = new StartProcessEventListener(startNode, trigger, process.getId(), filters);
+                                    StartProcessEventListener listener = new StartProcessEventListener(process.getId(), filters);
                                     signalManager.addEventListener(type, listener);
                                     ((RuleFlowProcess) process).getRuntimeMetaData().put("StartProcessEventType", type);
                                     ((RuleFlowProcess) process).getRuntimeMetaData().put("StartProcessEventListener", listener);
@@ -471,14 +467,10 @@ public class ProcessRuntimeImpl extends AbstractProcessRuntime {
 
         private String processId;
         private List<EventFilter> eventFilters;
-        private StartNode startNode;
-        private Trigger trigger;
 
-        public StartProcessEventListener(StartNode startNode, Trigger trigger, String processId, List<EventFilter> eventFilters) {
+        public StartProcessEventListener(String processId, List<EventFilter> eventFilters) {
             this.processId = processId;
             this.eventFilters = eventFilters;
-            this.trigger = trigger;
-            this.startNode = startNode;
         }
 
         @Override
@@ -493,53 +485,10 @@ public class ProcessRuntimeImpl extends AbstractProcessRuntime {
                     return;
                 }
             }
-            Map<String, Object> outputSet = new HashMap<>();
-            for (Map.Entry<String, String> entry : trigger.getInMappings().entrySet()) {
-                outputSet.put(entry.getKey(), entry.getKey());
-            }
 
-            // data association needs to be corrected as it is not input mapping but output mapping
-            boolean eventFound = false;
-            for (DataAssociation dataAssociation : trigger.getInAssociations()) {
-                if ("event".equals(dataAssociation.getSources().get(0).getLabel())) {
-                    eventFound = true;
-                }
-            }
+            String processInstanceId = kogitoProcessRuntime.createProcessInstance(processId, null).getId();
+            kogitoProcessRuntime.triggerProcessInstance(processInstanceId, type, event, null);
 
-            if (!eventFound && !trigger.getInAssociations().isEmpty()) {
-                String inputLabel = (String) startNode.getMetaData(TRIGGER_MAPPING_INPUT);
-                outputSet.put(inputLabel, event);
-            } else {
-                outputSet.put("event", event);
-            }
-
-            Map<String, Object> parameters = NodeIoHelper.processOutputs(trigger.getInAssociations(), key -> outputSet.get(key));
-            startProcessWithParamsAndTrigger(processId, parameters, type);
-
-        }
-    }
-
-    private class StartProcessWithTypeCommand implements ExecutableCommand<Void> {
-
-        private static final long serialVersionUID = -8890906804846111698L;
-
-        private String processId;
-        private Map<String, Object> params;
-        private String type;
-
-        private StartProcessWithTypeCommand(String processId, Map<String, Object> params, String type) {
-            this.processId = processId;
-            this.params = params;
-            this.type = type;
-        }
-
-        @Override
-        public Void execute(Context context) {
-            KieSession ksession = ((RegistryContext) context).lookup(KieSession.class);
-            ((ProcessRuntimeImpl) ((InternalKnowledgeRuntime) ksession).getProcessRuntime()).startProcess(processId,
-                    params, type);
-
-            return null;
         }
     }
 
@@ -558,4 +507,5 @@ public class ProcessRuntimeImpl extends AbstractProcessRuntime {
             signalEvent(type, event);
         }
     }
+
 }

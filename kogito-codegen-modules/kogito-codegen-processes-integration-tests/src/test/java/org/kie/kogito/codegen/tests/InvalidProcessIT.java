@@ -37,7 +37,6 @@ public class InvalidProcessIT extends AbstractCodegenIT {
     //Process Validations Tests
     static Stream<Arguments> invalidProcessesForTest() {
         return Stream.of(
-                Arguments.of("invalid/parsing-more-than-one-start.bpmn2"),
                 Arguments.of("invalid/validator-no-start.bpmn2"),
                 Arguments.of("invalid/parsing-multi-connection-end.bpmn2"),
                 Arguments.of("invalid/validator-no-end.bpmn2"),
