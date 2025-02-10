@@ -23,8 +23,12 @@ on:
   issues:
     types: [opened, reopened]
 jobs:
+  shared-vars:
+    uses: ./.github/workflows/shared-vars.yml
+  
   message:
-    runs-on: ubuntu-latest
+    runs-on: ${{ needs.shared-vars.outputs.os }}
+    needs: shared-vars
     steps:
     - uses: actions/checkout@v4
     - name: Send a stream message
