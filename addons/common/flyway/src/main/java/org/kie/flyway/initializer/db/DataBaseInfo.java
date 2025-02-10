@@ -17,31 +17,29 @@
  * under the License.
  */
 
-package org.kie.flyway.test.dataSources;
+package org.kie.flyway.initializer.db;
 
-import javax.sql.DataSource;
+public class DataBaseInfo {
 
-import org.kie.kogito.testcontainers.KogitoPostgreSqlContainer;
-import org.postgresql.ds.PGSimpleDataSource;
+    private final String name;
+    private final String version;
+    private final String flywayName;
 
-public class PostgreSQLTestDataSource implements TestDataSource {
-
-    private final PGSimpleDataSource dataSource;
-
-    public PostgreSQLTestDataSource(KogitoPostgreSqlContainer pgContainer) {
-        dataSource = new PGSimpleDataSource();
-        dataSource.setUrl(pgContainer.getJdbcUrl());
-        dataSource.setUser(pgContainer.getUsername());
-        dataSource.setPassword(pgContainer.getPassword());
+    public DataBaseInfo(String name, String version, String flywayName) {
+        this.name = name;
+        this.version = version;
+        this.flywayName = flywayName;
     }
 
-    @Override
-    public String getDbType() {
-        return "postgresql";
+    public String getName() {
+        return name;
     }
 
-    @Override
-    public DataSource getDataSource() {
-        return dataSource;
+    public String getVersion() {
+        return version;
+    }
+
+    public String getFlywayName() {
+        return flywayName;
     }
 }
