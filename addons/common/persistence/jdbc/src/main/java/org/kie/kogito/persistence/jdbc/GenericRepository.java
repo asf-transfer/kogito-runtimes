@@ -22,8 +22,8 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayDeque;
-import java.util.Deque;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.Spliterator;
 import java.util.Spliterators;
@@ -160,74 +160,33 @@ public class GenericRepository extends Repository {
         }
     }
 
-    private static class CloseableWrapper implements Runnable {
-
-        private Deque<AutoCloseable> wrapped = new ArrayDeque<>();
-
-        public <T extends AutoCloseable> T nest(T c) {
-            wrapped.addFirst(c);
-            return c;
-        }
-
-        @Override
-        public void run() {
-            try {
-                close();
-            } catch (Exception ex) {
-                throw new RuntimeException("Error closing resources", ex);
-            }
-        }
-
-        public void close() throws Exception {
-            Exception exception = null;
-            for (AutoCloseable wrap : wrapped) {
-                try {
-                    wrap.close();
-                } catch (Exception ex) {
-                    if (exception != null) {
-                        ex.addSuppressed(exception);
-                    }
-                    exception = ex;
-                }
-            }
-            if (exception != null) {
-                throw exception;
-            }
-        }
-    }
-
     @Override
     Stream<Record> findAllInternal(String processId, String processVersion) {
-        CloseableWrapper close = new CloseableWrapper();
-        try {
-            Connection connection = close.nest(dataSource.getConnection());
-            PreparedStatement statement = close.nest(connection.prepareStatement(sqlIncludingVersion(FIND_ALL, processVersion)));
+        try (Connection connection = dataSource.getConnection();
+                PreparedStatement statement = connection.prepareStatement(sqlIncludingVersion(FIND_ALL, processVersion))) {
             statement.setString(1, processId);
             if (processVersion != null) {
                 statement.setString(2, processVersion);
             }
-            ResultSet resultSet = close.nest(statement.executeQuery());
-            return StreamSupport.stream(new Spliterators.AbstractSpliterator<Record>(
-                    Long.MAX_VALUE, Spliterator.ORDERED) {
+            List<Record> record = new ArrayList<>();
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    record.add(from(resultSet));
+                }
+            }
+            return StreamSupport.stream(new Spliterators.AbstractSpliterator<Record>(Long.MAX_VALUE, Spliterator.ORDERED) {
+                int idx = 0;
+
                 @Override
                 public boolean tryAdvance(Consumer<? super Record> action) {
-                    try {
-                        boolean hasNext = resultSet.next();
-                        if (hasNext) {
-                            action.accept(from(resultSet));
-                        }
-                        return hasNext;
-                    } catch (SQLException e) {
-                        throw uncheckedException(e, "Error finding all process instances, for processId %s", processId);
+                    if (idx < record.size()) {
+                        action.accept(record.get(idx++));
+                        return true;
                     }
+                    return false;
                 }
-            }, false).onClose(close);
+            }, false);
         } catch (SQLException e) {
-            try {
-                close.close();
-            } catch (Exception ex) {
-                e.addSuppressed(ex);
-            }
             throw uncheckedException(e, "Error finding all process instances, for processId %s", processId);
         }
     }
