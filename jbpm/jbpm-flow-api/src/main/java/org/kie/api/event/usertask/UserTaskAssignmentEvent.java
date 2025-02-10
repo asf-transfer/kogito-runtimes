@@ -16,11 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.jbpm.process.instance.command;
 
-public interface KogitoProcessInstanceIdCommand {
+package org.kie.api.event.usertask;
 
-    void setProcessInstanceId(String procInstId);
+public interface UserTaskAssignmentEvent extends UserTaskEvent {
 
-    String getProcessInstanceId();
+    String getAssignmentType();
+
+    String[] getNewUsersId();
+
+    String[] getOldUsersId();
+
 }

@@ -40,6 +40,7 @@
   <url>http://www.jbpm.org</url>
 
   <modules>
+    <module>jbpm-flow-api</module>
     <module>jbpm-flow</module>
     <module>jbpm-flow-builder</module>
     <module>jbpm-bpmn2</module>
