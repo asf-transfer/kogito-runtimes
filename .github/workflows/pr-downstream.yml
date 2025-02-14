@@ -32,37 +32,50 @@ on:
       - '.ci/jenkins/**'
 
 jobs:
+  shared-vars:
+    uses: ./.github/workflows/shared-vars.yml
+
   kogito-downstream-build:
+    needs: shared-vars
     concurrency:
       group: pr-${{ matrix.job_name }}_${{ matrix.os }}_${{ matrix.java-version }}_${{ matrix.maven-version }}_${{ github.head_ref }}
       cancel-in-progress: true
     timeout-minutes: 180
     strategy:
       matrix:
-        job_name: [ kogito-apps, kogito-quarkus-examples, kogito-springboot-examples, serverless-workflow-examples ]
-        os: [ubuntu-latest]
-        java-version: [17]
-        maven-version: ['3.9.6']
+        job_name: [kogito-apps, kogito-quarkus-examples, kogito-springboot-examples, serverless-workflow-examples]
         include:
           - job_name: kogito-apps
             repository: incubator-kie-kogito-apps
             env_BUILD_MVN_OPTS: "-DskipUI"
+            os: ${{ needs.shared-vars.outputs.os }}
+            java-version: ${{ needs.shared-vars.outputs.java-version }}
+            maven-version: ${{ needs.shared-vars.outputs.maven-version }}
           - job_name: kogito-quarkus-examples
             repository: incubator-kie-kogito-examples
             env_KOGITO_EXAMPLES_SUBFOLDER_POM: kogito-quarkus-examples/
+            os: ${{ needs.shared-vars.outputs.os }}
+            java-version: ${{ needs.shared-vars.outputs.java-version }}
+            maven-version: ${{ needs.shared-vars.outputs.maven-version }}
           - job_name: kogito-springboot-examples
             repository: incubator-kie-kogito-examples
             env_KOGITO_EXAMPLES_SUBFOLDER_POM: kogito-springboot-examples/
+            os: ${{ needs.shared-vars.outputs.os }}
+            java-version: ${{ needs.shared-vars.outputs.java-version }}
+            maven-version: ${{ needs.shared-vars.outputs.maven-version }}
           - job_name: serverless-workflow-examples
             repository: incubator-kie-kogito-examples
             env_KOGITO_EXAMPLES_SUBFOLDER_POM: serverless-workflow-examples/
+            os: ${{ needs.shared-vars.outputs.os }}
+            java-version: ${{ needs.shared-vars.outputs.java-version }}
+            maven-version: ${{ needs.shared-vars.outputs.maven-version }}
       fail-fast: false
     runs-on: ${{ matrix.os }}
     name: ${{ matrix.job_name }} (${{ matrix.os }} / Java-${{ matrix.java-version }} / Maven-${{ matrix.maven-version }})
     steps:
       - name: Clean Disk Space
         uses: apache/incubator-kie-kogito-pipelines/.ci/actions/ubuntu-disk-space@main
-        if: ${{ matrix.os == 'ubuntu-latest' }}
+        if: ${{ contains(matrix.os, 'ubuntu') }}
       - name: Support long paths
         if: ${{ matrix.os == 'windows-latest' }}
         uses: apache/incubator-kie-kogito-pipelines/.ci/actions/long-paths@main

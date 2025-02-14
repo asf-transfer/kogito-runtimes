@@ -29,11 +29,15 @@ on:
     - '.github/workflows/jenkins-tests-PR.yml'
 
 jobs:
+  shared-vars:
+    uses: ./.github/workflows/shared-vars.yml
+
   jenkinsfile-tests:
     concurrency:
       group: ${{ github.repository.name }}_jenkinsfile_tests-${{ github.head_ref }}
       cancel-in-progress: true
-    runs-on: ubuntu-latest
+    runs-on: ${{ needs.shared-vars.outputs.os }}
+    needs: shared-vars
     name: Jenkinsfiles
     steps:
     - name: Checkout repo
@@ -64,7 +68,8 @@ jobs:
     concurrency:
       group: ${{ github.repository.name }}_dsl_tests-${{ github.head_ref }}
       cancel-in-progress: true
-    runs-on: ubuntu-latest
+    runs-on: ${{ needs.shared-vars.outputs.os }}
+    needs: shared-vars
     name: DSL
     steps:
     - name: DSL tests
