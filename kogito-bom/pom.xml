@@ -1939,6 +1939,11 @@
         <version>${project.version}</version>
         <classifier>sources</classifier>
       </dependency>
+    <dependency>
+        <groupId>org.kie.kogito</groupId>
+        <artifactId>jbpm-flow-api</artifactId>
+        <version>${project.version}</version>
+      </dependency>
       <dependency>
         <groupId>org.kie.kogito</groupId>
         <artifactId>jbpm-flow-migration</artifactId>
