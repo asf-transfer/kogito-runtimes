@@ -209,6 +209,37 @@ public class BusinessRuleTaskIT extends AbstractRulesCodegenIT {
     }
 
     @Test
+    public void testDynamicDecision() throws Exception {
+        Map<AbstractCodegenIT.TYPE, List<String>> resourcesTypeMap = new HashMap<>();
+        resourcesTypeMap.put(TYPE.PROCESS, Collections.singletonList("decision/dynamic/DynamicDmnProcess.bpmn2"));
+        resourcesTypeMap.put(TYPE.DECISION, Collections.singletonList("decision/dynamic/HarvardUniversity/HarvardUniversity.dmn"));
+        Application app = generateCode(resourcesTypeMap);
+        assertThat(app).isNotNull();
+        Process<? extends Model> p =
+                app.get(Processes.class)
+                        .processById("DynamicDmnProcess");
+
+        // first run 16, 1 and expected days is 27
+        {
+            Model m = p.createModel();
+            HashMap<String, Object> vars = new HashMap<>();
+            vars.put("marks", 43);
+            vars.put("university", "HarvardUniversity");
+            m.fromMap(vars);
+
+            ProcessInstance<? extends Model> processInstance = p.createInstance(m);
+            processInstance.start();
+
+            assertThat(processInstance.status()).isEqualTo(ProcessInstance.STATE_COMPLETED);
+            Model result = processInstance.variables();
+
+            assertThat(result.toMap().get("result"))
+                    .isNotNull()
+                    .isEqualTo("failed");
+        }
+    }
+
+    @Test
     public void testBusinessRuleTaskWithIOExpression() throws Exception {
         Map<AbstractCodegenIT.TYPE, List<String>> resourcesTypeMap = new HashMap<>();
         resourcesTypeMap.put(TYPE.PROCESS, Collections.singletonList("ruletask/BusinessRuleTaskWithIOExpression.bpmn2"));
