@@ -99,6 +99,10 @@
             <artifactId>kogito-drools</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.drools</groupId>
+            <artifactId>drools-codegen-common</artifactId>
+        </dependency>
 
     </dependencies>
 
